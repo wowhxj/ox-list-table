@@ -251,7 +251,7 @@ Intended for `org-export-before-parsing-functions'."
                          (t (setq keep-going nil))))))
                   (push (cons region-start (point)) regions))
               (forward-line 1))))
-        (dolist (region (nreverse regions))
+        (dolist (region regions)
           (let* ((beg (car region))
                  (end (cdr region))
                  (parsed (org-list-table--scan-region beg end))
