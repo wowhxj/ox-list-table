@@ -78,15 +78,33 @@
                    l))
                lines "\n")))
 
+(defcustom org-list-table-video-extensions '("mp4" "webm" "ogv" "mov")
+  "File extensions rendered as inline <video> players in cells."
+  :type '(repeat string)
+  :group 'org-list-table)
+
+(defun org-list-table--videofy (html)
+  "Replace <a> links to video files in HTML with <video> players."
+  (replace-regexp-in-string
+   (concat "<a href=\"\\([^\"]+\\.\\(?:"
+           (mapconcat #'regexp-quote org-list-table-video-extensions "\\|")
+           "\\)\\)\"[^>]*>\\(?:.\\|\n\\)*?</a>")
+   "<video controls preload=\"metadata\" src=\"\\1\" style=\"max-width:100%\"></video>"
+   html))
+
 (defun org-list-table--export-org-to-html (org-src)
   "Export ORG-SRC string to HTML body using org's export engine.
 Returns trimmed HTML string, or empty string for nil/blank input."
   (if (or (null org-src) (string= (string-trim org-src) ""))
       ""
+    ;; A bare "-" (or "--"...) cell would be parsed by org as an empty
+    ;; list item, producing <ul><li></li></ul>; emit it as plain text.
+    (if (string-match-p "\\`-+\\'" (string-trim org-src))
+        (string-trim org-src)
     (let ((html (org-export-string-as
                  org-src 'html t
                  '(:with-toc nil :section-numbers nil))))
-      (string-trim html))))
+      (org-list-table--videofy (string-trim html))))))
 
 (defun org-list-table--scan-region (beg end)
   "Scan list-table region BEG..END in current buffer.
@@ -261,6 +279,35 @@ Intended for `org-export-before-parsing-functions'."
             (delete-region beg end)
             (goto-char beg)
             (insert fmt))))))
+
+;;;###autoload
+(defun org-list-table-from-table ()
+  "Convert the org table at point into a list-table in place."
+  (interactive)
+  (unless (org-at-table-p)
+    (user-error "Point is not inside an org table"))
+  (let* ((table (org-table-to-lisp))
+         (beg (org-table-begin))
+         (end (org-table-end))
+         (seen-hline (memq 'hline table))
+         (first-row t)
+         (text
+          (mapconcat
+           (lambda (row)
+             (prog1
+                 (concat
+                  ;; Header row (before any hline) starts with a bare
+                  ;; "-"; body rows start with a "- ----" separator.
+                  (if (and first-row seen-hline) "-" "- --------")
+                  (mapconcat
+                   (lambda (cell)
+                     (concat "\n  - " (string-trim cell)))
+                   row ""))
+               (setq first-row nil)))
+           (remq 'hline table) "\n")))
+    (delete-region beg end)
+    (goto-char beg)
+    (insert "#+ATTR_ODT: :list-table t\n" text "\n")))
 
 ;;;###autoload
 (defun org-list-table-enable ()

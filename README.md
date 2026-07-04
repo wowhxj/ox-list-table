@@ -106,6 +106,16 @@ This demonstrates:
 - **Multi-item cells** as nested lists
 - **`#+CAPTION`** rendered as `<caption>`
 
+### Convert a native org table
+
+Place point inside a regular org table and run:
+
+```
+M-x org-list-table-from-table
+```
+
+The table is replaced in place with the equivalent list-table (the row above any `|---|` line becomes the header). Useful when a table has outgrown org's single-line cells and you want to start adding rich content.
+
 ## How it works
 
 `ox-list-table` hooks into `org-export-before-parsing-functions`. Before Org parses the buffer for export, it:
